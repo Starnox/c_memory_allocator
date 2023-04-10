@@ -23,7 +23,7 @@ void *sbrk_allocate(size_t size)
 
 	bl_is_list_empty() ? bl_initialise_list(ptr, size) : bl_add_block(ptr, size);
 
-	return (void *) ((char *) ptr + BLOCK_SIZE);
+	return get_data_ptr(ptr, 0);
 }
 
 void *mmap_allocate(size_t total_size, size_t size)
@@ -49,17 +49,18 @@ void *alloc_common(size_t size, size_t max)
 
 	void *ret = NULL;
 
-	if (total_size >= max) // mmap
+	if (total_size >= max) {
 		ret = mmap_allocate(total_size, aligned_size);
-	else { // heap - sbrk
+	} else { // heap - sbrk
 		struct block_meta *block = bl_get_best(aligned_size);
 
 		if (block) { // try to fit in a free block
 			block->status = STATUS_ALLOC;
 			bl_try_split(block, aligned_size);
 			ret = get_data_ptr(block, 0);
-		} else
+		} else {
 			ret = sbrk_allocate(aligned_size); // allocate memory with sbrk
+		}
 	}
 
 	return ret;
@@ -76,11 +77,11 @@ void os_free(void *ptr)
 		return;
 	struct block_meta *block = get_block_ptr(ptr);
 
-	if (block->status == STATUS_FREE)
+	if (block->status == STATUS_FREE) {
 		return;
-	else if (block->status == STATUS_ALLOC)
+	} else if (block->status == STATUS_ALLOC) {
 		block->status = STATUS_FREE;
-	else {
+	} else {
 		size_t total_size = block->size + BLOCK_SIZE;
 		int ret = munmap((void *)block, total_size);
 
